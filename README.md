@@ -43,17 +43,34 @@ These policies will be attached to the IAM group in the script.
 
 ## Usage
 
+```sh
+kops-aws.sh - kOpS AWS Setup
+
+    Usage: kops-aws.sh -h
+           kops-aws.sh -a -c
+
+      -h    Show this help message
+      -v    Show Version
+      -a    Add the kOps user, group and bucket
+      -c    Create the cluster
+      -d    Delete the cluster
+      -r    Remove the kOps user, group and bucket
+
+```
+
+### Add the created resources
+
 First time running this project you need to create the kOps IAM user and its group and to define the state bucket, run the following script, ensure that you bucket-prefix is globally unique.
 
 ```sh
-AWS_PROFILE=<your-profile> S3_BUCKET_PREFIX=<bucket-prefix-globally-unique> ./script/kops-aws.sh -i
+AWS_PROFILE=<your-profile> S3_BUCKET_PREFIX=<bucket-prefix-globally-unique> ./script/kops-aws.sh -a
 ```
 
 For debugging purposes, the output from the commands are stored in ./output folder, including the access-key created for the iam user.
 
 After the user/group/bucket is created, then the cluster can be created.
 
-### Install Kubernetes Cluster
+### Create Kubernetes Cluster
 
 **Note** In this example we will be deploying our cluster to the us-west-2 region.
 
@@ -61,10 +78,18 @@ After the user/group/bucket is created, then the cluster can be created.
 AWS_PROFILE=<your-profile> S3_BUCKET_PREFIX=<bucket-prefix-globally-unique> ./scripts/kops-aws.sh -c
 ```
 
-### Delete the created resources
+### Delete Kubernetes Cluster
+
+**Note** In this example we will be deploying our cluster to the us-west-2 region.
+
+```sh
+AWS_PROFILE=<your-profile> S3_BUCKET_PREFIX=<bucket-prefix-globally-unique> ./scripts/kops-aws.sh -d
+```
+
+### Remove the created resources
 
 When you no longer need kOps you can delete the kOps IAM user, group and bucket by running the following script
 
 ```sh
-AWS_PROFILE=<your-profile> S3_BUCKET_PREFIX=<bucket-prefix-globally-unique> ./scripts/kops-aws.sh -d
+AWS_PROFILE=<your-profile> S3_BUCKET_PREFIX=<bucket-prefix-globally-unique> ./scripts/kops-aws.sh -r
 ```

@@ -210,7 +210,7 @@ function helpfunction() {
     echo "kops-aws.sh - kOpS AWS Setup
 
     Usage: kops-aws.sh -h
-           kops-aws.sh -i -c"
+           kops-aws.sh -a -c"
     echo ""
     echo "      -h    Show this help message"
     echo "      -v    Show Version"
