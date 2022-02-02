@@ -7,7 +7,6 @@
 : "${KOPS_GROUP:=kops}"
 : "${S3_BUCKET_PREFIX:=prefix-example}"
 : "${S3_BUCKET:=${S3_BUCKET_PREFIX}-com-state-store}"
-: "${CLUSTER_NAME:=myfirstcluster.k8s.local}" # .k8s.local == https://kops.sigs.k8s.io/gossip/
 : "${KOPS_STATE_STORE:=s3://${S3_BUCKET_PREFIX}-com-state-store}"
 : "${OUTPUT_DIR:=output}"
 if [ -f "${OUTPUT_DIR}/access-key.json" ]; then
@@ -16,6 +15,19 @@ else
     EXISTING_ACCESS_KEY=""
 fi
 : "${ACCESS_KEY:=${EXISTING_ACCESS_KEY}}"
+
+# cluster config
+: "${CLUSTER_ID:=myfirstcluster}"
+: "${CLUSTER_NAME:=${CLUSTER_ID}.k8s.local}" # .k8s.local == https://kops.sigs.k8s.io/gossip/
+: "${CLUSTER_ZONES:=us-west-2a}"
+: "${NODE_COUNT:=2}"
+: "${MASTER_SIZE:=c5.large}"
+: "${NODE_SIZE:=m5.large}"
+
+: "${KOPS_STATE_STORE:=s3\:\/\/${S3_BUCKET}}"
+
+# use for ssh key-pair
+: "${KEY_NAME:=${CLUSTER_ID}}"
 
 function showVersion() {
     echo "Script Version: $SCRIPT_VERSION"
@@ -80,8 +92,19 @@ function create-bucket() {
     fi
 }
 
-function init() {
-    if promptyn ">>> do you want to create the user ${KOPS_USER} with group ${KOPS_GROUP} and bucket ${S3_BUCKET}?"; then
+# currently not used
+function create-key-pair() {
+    if aws --profile ${AWS_PROFILE} ec2 describe-key-pairs | jq -e "(.KeyPairs[] | .KeyName | select(.==\"${KEY_NAME}\"))" &>/dev/null; then
+        echo ">>> key-pair ${KEY_NAME} already exists"
+    else
+        echo ">>> creating key-pair ${KEY_NAME}"
+        aws --profile ${AWS_PROFILE} ec2 create-key-pair \
+            --key-name ${KEY_NAME} >${OUTPUT_DIR}/${KEY_NAME}.pem
+    fi
+}
+
+function add-resources() {
+    if promptyn ">>> do you want to create the user ${KOPS_USER} with group ${KOPS_GROUP}, bucket ${S3_BUCKET} and a SSH Key Pair?"; then
         mkdir -p "${OUTPUT_DIR}"
         create-group
         create-user
@@ -91,11 +114,45 @@ function init() {
     fi
 }
 
-function create-cluster() {
-    echo "create cluster"
+function create-bastion() {
+    # https://medium.com/andcloudio/kubernetes-kops-cluster-on-aws-f55d197d8304
+    echo ">> create bastion for cluster"
 }
 
-function delete() {
+function create-cluster() {
+    echo ">> create configuration for cluster ${CLUSTER_NAME} in zones ${CLUSTER_ZONES} with ${NODE_COUNT} nodes, with bucket ${S3_BUCKET}"
+    kops create cluster ${CLUSTER_NAME} \
+        --zones=${CLUSTER_ZONES} \
+        --node-count=${NODE_COUNT} \
+        --state=s3://${S3_BUCKET} \
+        --node-size ${NODE_SIZE} \
+        --master-size ${MASTER_SIZE}
+    # --dry-run \
+    # -oyaml >${OUTPUT_DIR}/kops-create-cluster-config.yaml
+
+    if promptyn ">>> do you want to create cluster ${CLUSTER_NAME} in zones ${CLUSTER_ZONES} with ${NODE_COUNT} nodes, with bucket ${S3_BUCKET}?"; then
+        kops update cluster ${CLUSTER_NAME} \
+            --state s3://${S3_BUCKET} \
+            --yes
+        echo ">>> sleeping for 10 seconds" && sleep 10
+        kops export kubecfg --admin --state "${KOPS_STATE_STORE}"
+        kops validate cluster --wait 10m --state "${KOPS_STATE_STORE}"
+    else
+        exit
+    fi
+}
+
+function delete-cluster() {
+    if promptyn ">>> do you want to delete cluster ${CLUSTER_NAME} in zones ${CLUSTER_ZONES} with ${NODE_COUNT} nodes, with bucket ${S3_BUCKET}?"; then
+        kops delete cluster ${CLUSTER_NAME} \
+            --state s3://${S3_BUCKET} \
+            --yes
+    else
+        exit
+    fi
+}
+
+function remove-resources() {
     if promptyn ">>> do you want to delete the user ${KOPS_USER}, the group ${KOPS_GROUP} and the bucket ${S3_BUCKET_PREFIX}-com-state-store?"; then
         if aws s3api head-bucket --bucket "$S3_BUCKET" 2>/dev/null; then
             echo ">>> deleting bucket ${S3_BUCKET}"
@@ -157,9 +214,10 @@ function helpfunction() {
     echo ""
     echo "      -h    Show this help message"
     echo "      -v    Show Version"
-    echo "      -i    Create the kOps user, group and bucket"
+    echo "      -a    Add the kOps user, group and bucket"
     echo "      -c    Create the cluster"
-    echo "      -d    Delete all the created resources"
+    echo "      -d    Delete the cluster"
+    echo "      -r    Remove the kOps user, group and bucket"
     echo ""
 }
 
@@ -168,7 +226,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-while getopts "hvicd-:" OPT; do
+while getopts "hvacdr-:" OPT; do
     if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
         OPT="${OPTARG%%=*}"     # extract long option name
         OPTARG="${OPTARG#$OPT}" # extract long option argument (may be empty)
@@ -181,14 +239,17 @@ while getopts "hvicd-:" OPT; do
     v)
         showVersion
         ;;
-    i)
-        init
+    a)
+        add-resources
         ;;
     c)
         create-cluster
         ;;
     d)
-        delete
+        delete-cluster
+        ;;
+    r)
+        remove-resources
         ;;
     *)
         echo "$(basename "${0}"):usage: [-c] | [-d] | [-b]"

@@ -25,7 +25,7 @@ kOps uses the Go AWS SDK to register security credentials. This [AWS article](ht
 
 In order to use kOps to build clusters in AWS we will create a dedicated IAM user for kOps.
 
-The kops user will require the following IAM permissions to function properly:
+The kOps user will require the following IAM permissions to function properly:
 
 ```
 AmazonEC2FullAccess
@@ -37,6 +37,8 @@ AmazonSQSFullAccess
 AmazonEventBridgeFullAccess
 ```
 
+These policies will be attached to the IAM group in the script.
+
 ## Usage
 
 First time running this project you need to create the kOps IAM user and its group and to define the state bucket, run the following script, ensure that you bucket-prefix is globally unique.
@@ -45,11 +47,17 @@ First time running this project you need to create the kOps IAM user and its gro
 AWS_PROFILE=<your-profile> S3_BUCKET_PREFIX=<bucket-prefix-globally-unique> ./script/kops-aws.sh -i
 ```
 
-For debugging purposes, the output from the commands are stored in [./output](./output) folder, including the access-key created for the iam user.
+For debugging purposes, the output from the commands are stored in ./output folder, including the access-key created for the iam user.
 
 After the user/group/bucket is created, then the cluster can be created.
 
-TODO
+### Install Kubernetes Cluster
+
+**Note** In this example we will be deploying our cluster to the us-west-2 region.
+
+
+
+### Delete the created resources
 
 When you no longer need kOps you can delete the kOps IAM user, group and bucket by running the following script
 
