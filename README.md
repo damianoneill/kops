@@ -1,5 +1,7 @@
 # kOps
 
+![kOps Deployment](images/kops-deployment.png)
+
 ## Installation
 
 This project used [adsf](http://asdf-vm.com/manage/configuration.html#tool-versions) to provision the appropriate tooling and uses a [.tool-versions](.tool-versions) file to explicitly set the versions.
@@ -55,7 +57,9 @@ After the user/group/bucket is created, then the cluster can be created.
 
 **Note** In this example we will be deploying our cluster to the us-west-2 region.
 
-
+```sh
+AWS_PROFILE=<your-profile> S3_BUCKET_PREFIX=<bucket-prefix-globally-unique> ./scripts/kops-aws.sh -c
+```
 
 ### Delete the created resources
 
