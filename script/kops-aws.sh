@@ -23,6 +23,9 @@ fi
 : "${NODE_COUNT:=2}"
 : "${MASTER_SIZE:=c5.large}"
 : "${NODE_SIZE:=m5.large}"
+: "${SSH_PUBLIC_KEY:=~/.ssh/id_rsa.pub}"
+: "${CLOUD_LABELS:=Stack=Test}"
+: "${RESTRICTED_CIDR:=0.0.0.0/0}"
 
 : "${KOPS_STATE_STORE:=s3\:\/\/${S3_BUCKET}}"
 
@@ -104,7 +107,7 @@ function create-key-pair() {
 }
 
 function add-resources() {
-    if promptyn ">>> do you want to create the user ${KOPS_USER} with group ${KOPS_GROUP}, bucket ${S3_BUCKET} and a SSH Key Pair?"; then
+    if promptyn ">>> do you want to create the user ${KOPS_USER} with group ${KOPS_GROUP}, and a S3 state bucket ${S3_BUCKET}?"; then
         mkdir -p "${OUTPUT_DIR}"
         create-group
         create-user
@@ -114,11 +117,6 @@ function add-resources() {
     fi
 }
 
-function create-bastion() {
-    # https://medium.com/andcloudio/kubernetes-kops-cluster-on-aws-f55d197d8304
-    echo ">> create bastion for cluster"
-}
-
 function create-cluster() {
     echo ">> create configuration for cluster ${CLUSTER_NAME} in zones ${CLUSTER_ZONES} with ${NODE_COUNT} nodes, with bucket ${S3_BUCKET}"
     kops create cluster ${CLUSTER_NAME} \
@@ -126,7 +124,10 @@ function create-cluster() {
         --node-count=${NODE_COUNT} \
         --state=s3://${S3_BUCKET} \
         --node-size ${NODE_SIZE} \
-        --master-size ${MASTER_SIZE}
+        --master-size ${MASTER_SIZE} \
+        --ssh-public-key ${SSH_PUBLIC_KEY} \
+        --cloud-labels=${CLOUD_LABELS} \
+        --admin-access=${RESTRICTED_CIDR}
     # --dry-run \
     # -oyaml >${OUTPUT_DIR}/kops-create-cluster-config.yaml
 
