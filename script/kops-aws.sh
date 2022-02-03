@@ -9,6 +9,7 @@
 : "${S3_BUCKET:=${S3_BUCKET_PREFIX}-com-state-store}"
 : "${KOPS_STATE_STORE:=s3://${S3_BUCKET_PREFIX}-com-state-store}"
 : "${OUTPUT_DIR:=output}"
+: "${TERRAFORM_DIR:=terraform}"
 if [ -f "${OUTPUT_DIR}/access-key.json" ]; then
     EXISTING_ACCESS_KEY=$(jq -r .AccessKey.AccessKeyId <${OUTPUT_DIR}/access-key.json)
 else
@@ -117,6 +118,22 @@ function add-resources() {
     fi
 }
 
+function create-terraform() {
+    echo ">> create terraform configuration for cluster ${CLUSTER_NAME} in zones ${CLUSTER_ZONES} with ${NODE_COUNT} nodes, with bucket ${S3_BUCKET}"
+    mkdir -p ${TERRAFORM_DIR}
+    kops create cluster ${CLUSTER_NAME} \
+        --zones=${CLUSTER_ZONES} \
+        --node-count=${NODE_COUNT} \
+        --state=s3://${S3_BUCKET} \
+        --node-size ${NODE_SIZE} \
+        --master-size ${MASTER_SIZE} \
+        --ssh-public-key ${SSH_PUBLIC_KEY} \
+        --cloud-labels=${CLOUD_LABELS} \
+        --admin-access=${RESTRICTED_CIDR} \
+        --out=${TERRAFORM_DIR}\
+        --target=terraform
+}
+
 function create-cluster() {
     echo ">> create configuration for cluster ${CLUSTER_NAME} in zones ${CLUSTER_ZONES} with ${NODE_COUNT} nodes, with bucket ${S3_BUCKET}"
     kops create cluster ${CLUSTER_NAME} \
@@ -217,6 +234,7 @@ function helpfunction() {
     echo "      -v    Show Version"
     echo "      -a    Add the kOps user, group and bucket"
     echo "      -c    Create the cluster"
+    echo "      -t    Create the terraform configuration"
     echo "      -d    Delete the cluster"
     echo "      -r    Remove the kOps user, group and bucket"
     echo ""
@@ -227,7 +245,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-while getopts "hvacdr-:" OPT; do
+while getopts "hvacdrt-:" OPT; do
     if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
         OPT="${OPTARG%%=*}"     # extract long option name
         OPTARG="${OPTARG#$OPT}" # extract long option argument (may be empty)
@@ -246,6 +264,9 @@ while getopts "hvacdr-:" OPT; do
     c)
         create-cluster
         ;;
+    t)
+        create-terraform
+        ;;
     d)
         delete-cluster
         ;;
@@ -253,7 +274,7 @@ while getopts "hvacdr-:" OPT; do
         remove-resources
         ;;
     *)
-        echo "$(basename "${0}"):usage: [-c] | [-d] | [-b]"
+        echo "$(basename "${0}"):usage: [-a] | [-c] | [-t] | [-d] | [-r]"
         exit 1 # Command to come out of the program with status 1
         ;;
     esac
