@@ -21,6 +21,43 @@ aws_access_key_id = XXXXX
 aws_secret_access_key = XXXXX
 ```
 
+## Variables
+
+The script includes a set of variables that can be overriden on the command line.  See below for the list and an example. 
+
+```shell
+: "${AWS_PROFILE:=default}"
+: "${KOPS_USER:=kops}"
+: "${KOPS_GROUP:=kops}"
+: "${S3_BUCKET_PREFIX:=prefix-example}"
+: "${S3_BUCKET:=${S3_BUCKET_PREFIX}-com-state-store}"
+: "${KOPS_STATE_STORE:=s3://${S3_BUCKET_PREFIX}-com-state-store}"
+: "${OUTPUT_DIR:=output}"
+if [ -f "${OUTPUT_DIR}/access-key.json" ]; then
+    EXISTING_ACCESS_KEY=$(jq -r .AccessKey.AccessKeyId <${OUTPUT_DIR}/access-key.json)
+else
+    EXISTING_ACCESS_KEY=""
+fi
+: "${ACCESS_KEY:=${EXISTING_ACCESS_KEY}}"
+
+# cluster config
+: "${CLUSTER_ID:=myfirstcluster}"
+: "${CLUSTER_NAME:=${CLUSTER_ID}.k8s.local}" # .k8s.local == https://kops.sigs.k8s.io/gossip/
+: "${CLUSTER_ZONES:=us-west-2a}"
+: "${NODE_COUNT:=2}"
+: "${MASTER_SIZE:=c5.large}"
+: "${NODE_SIZE:=m5.large}"
+: "${SSH_PUBLIC_KEY:=~/.ssh/id_rsa.pub}"
+: "${CLOUD_LABELS:=Stack=Test}"
+: "${RESTRICTED_CIDR:=0.0.0.0/0}"
+: "${KOPS_STATE_STORE:=s3\:\/\/${S3_BUCKET}}"
+: "${KEY_NAME:=${CLUSTER_ID}}"
+```
+And an example of overriding some variables. 
+
+```sh
+AWS_PROFILE=galileo S3_BUCKET_PREFIX=galileo ./script/kops-aws.sh -a -c
+```
 ## Security Credentials
 
 kOps uses the Go AWS SDK to register security credentials. This [AWS article](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials) describes how to configure settings for service clients.
