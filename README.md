@@ -23,7 +23,7 @@ aws_secret_access_key = XXXXX
 
 ## Variables
 
-The script includes a set of variables that can be overriden on the command line.  See below for the list and an example. 
+The script includes a set of variables that can be overriden on the command line. See below for the list and an example.
 
 ```shell
 : "${AWS_PROFILE:=default}"
@@ -53,11 +53,13 @@ fi
 : "${KOPS_STATE_STORE:=s3\:\/\/${S3_BUCKET}}"
 : "${KEY_NAME:=${CLUSTER_ID}}"
 ```
-And an example of overriding some variables. 
+
+And an example of overriding some variables.
 
 ```sh
 AWS_PROFILE=galileo S3_BUCKET_PREFIX=galileo ./script/kops-aws.sh -a -c
 ```
+
 ## Security Credentials
 
 kOps uses the Go AWS SDK to register security credentials. This [AWS article](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html#specifying-credentials) describes how to configure settings for service clients.
