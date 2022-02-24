@@ -242,6 +242,7 @@ function create-repository() {
         else
             echo ">>> repository $REPOSITORY_URI already exists"
         fi
+        docker login -u AWS -p "$(aws ecr get-login-password --region "$REGION")" "$AWS_ACCOUNT_ID".dkr.ecr."$REGION".amazonaws.com
     else
         exit
     fi
