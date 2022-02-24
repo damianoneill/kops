@@ -17,8 +17,11 @@ else
 fi
 : "${ACCESS_KEY:=${EXISTING_ACCESS_KEY}}"
 
+: "${AWS_ACCOUNT_ID:=$(aws sts get-caller-identity | jq -r ".Account")}"
+: "${REGION:=$(aws configure get region)}"
+
 # cluster config
-: "${CLUSTER_ID:=myfirstcluster}"
+: "${CLUSTER_ID:=${S3_BUCKET_PREFIX}}"
 : "${CLUSTER_NAME:=${CLUSTER_ID}.k8s.local}" # .k8s.local == https://kops.sigs.k8s.io/gossip/
 : "${CLUSTER_ZONES:=us-west-2a}"
 : "${NODE_COUNT:=2}"
@@ -26,8 +29,7 @@ fi
 : "${NODE_SIZE:=m5.large}"
 : "${SSH_PUBLIC_KEY:=~/.ssh/id_rsa.pub}"
 : "${CLOUD_LABELS:=Stack=Test}"
-: "${RESTRICTED_CIDR:=0.0.0.0/0}"
-
+: "${RESTRICTED_CIDR:=0.0.0.0/0}" # for multiple CIDR, comma seperated should be used
 : "${KOPS_STATE_STORE:=s3\:\/\/${S3_BUCKET}}"
 
 # use for ssh key-pair
@@ -130,7 +132,7 @@ function create-terraform() {
         --ssh-public-key ${SSH_PUBLIC_KEY} \
         --cloud-labels=${CLOUD_LABELS} \
         --admin-access=${RESTRICTED_CIDR} \
-        --out=${TERRAFORM_DIR}\
+        --out=${TERRAFORM_DIR} \
         --target=terraform
 }
 
@@ -224,6 +226,27 @@ function remove-resources() {
     fi
 }
 
+function create-repository() {
+    if promptyn ">>> do you want to create repository $1?"; then
+        REPOSITORY_URI="$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$1"
+        aws ecr describe-repositories --repository-names "$1" >/dev/null 2>&1
+        status=$?
+        if [[ ! "${status}" -eq 0 ]]; then
+            aws ecr create-repository --repository-name "$1" >/dev/null 2>&1
+            status=$?
+            if [[ "${status}" -eq 0 ]]; then
+                echo ">>> repository $REPOSITORY_URI was created"
+            else
+                echo ">>> problem creating repository $REPOSITORY_URI"
+            fi
+        else
+            echo ">>> repository $REPOSITORY_URI already exists"
+        fi
+    else
+        exit
+    fi
+}
+
 function helpfunction() {
     echo "kops-aws.sh - kOpS AWS Setup
 
@@ -234,6 +257,7 @@ function helpfunction() {
     echo "      -v    Show Version"
     echo "      -a    Add the kOps user, group and bucket"
     echo "      -c    Create the cluster"
+    echo "      -e    Create an ECR repository"
     echo "      -t    Create the terraform configuration"
     echo "      -d    Delete the cluster"
     echo "      -r    Remove the kOps user, group and bucket"
@@ -245,7 +269,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-while getopts "hvacdrt-:" OPT; do
+while getopts "hvace:drt-:" OPT; do
     if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
         OPT="${OPTARG%%=*}"     # extract long option name
         OPTARG="${OPTARG#$OPT}" # extract long option argument (may be empty)
@@ -264,6 +288,9 @@ while getopts "hvacdrt-:" OPT; do
     c)
         create-cluster
         ;;
+    e)
+        create-repository "$OPTARG"
+        ;;
     t)
         create-terraform
         ;;
@@ -274,7 +301,7 @@ while getopts "hvacdrt-:" OPT; do
         remove-resources
         ;;
     *)
-        echo "$(basename "${0}"):usage: [-a] | [-c] | [-t] | [-d] | [-r]"
+        echo "$(basename "${0}"):usage: [-a] | [-c] | [-e] <repository name> | [-t] | [-d] | [-r]"
         exit 1 # Command to come out of the program with status 1
         ;;
     esac

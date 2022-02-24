@@ -92,6 +92,7 @@ kops-aws.sh - kOpS AWS Setup
       -v    Show Version
       -a    Add the kOps user, group and bucket
       -c    Create the cluster
+      -e    Create an ECR repository
       -t    Create the terraform configuration
       -d    Delete the cluster
       -r    Remove the kOps user, group and bucket
@@ -116,6 +117,43 @@ After the user/group/bucket is created, then the cluster can be created.
 
 ```sh
 AWS_PROFILE=<your-profile> S3_BUCKET_PREFIX=<bucket-prefix-globally-unique> ./scripts/kops-aws.sh -c
+```
+
+### Test the Kubernetes Cluster
+
+Let us deploy a simple Nginx workload and see if you can load the website in a browser.
+
+```sh
+kubectl create deployment my-nginx --image=nginx --replicas=1 --port=80;
+kubectl expose deployment my-nginx --port=80 --type=LoadBalancer;
+```
+
+Verify if the Nginx pods are running:
+
+```sh
+kubectl get pods
+NAME                        READY   STATUS    RESTARTS   AGE
+my-nginx-7576957b7b-wm95d   1/1     Running   0          7m10s
+```
+
+Get the Load Balancer (LB) address, **NOTE** it can take some time before the external ip is available:
+
+```sh
+kubectl get svc my-nginx
+NAME       TYPE           CLUSTER-IP      EXTERNAL-IP                                                              PORT(S)        AGE
+my-nginx   LoadBalancer   100.71.164.21   aee2f842a15ee40e5841fcb7676121f8-710700753.us-west-2.elb.amazonaws.com   80:31828/TCP   7m33s
+```
+Here, aee2f842a15ee40e5841fcb7676121f8-710700753.us-west-2.elb.amazonaws.com is the DNS name (endpoint) of the LB. Copy and paste it into a browser. You should see an Nginx default page:
+
+![nginx webpage](images/nginx.png)
+
+The Kubernetes cluster is working as expected.
+
+To clean up these resources:
+
+```sh
+kubectl delete svc my-nginx;
+kubectl delete deploy my-nginx;
 ```
 
 ### Delete Kubernetes Cluster
