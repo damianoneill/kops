@@ -11,7 +11,7 @@
 : "${OUTPUT_DIR:=output}"
 : "${TERRAFORM_DIR:=terraform}"
 if [ -f "${OUTPUT_DIR}/access-key.json" ]; then
-    EXISTING_ACCESS_KEY=$(jq -r .AccessKey.AccessKeyId <${OUTPUT_DIR}/access-key.json)
+    EXISTING_ACCESS_KEY=$(jq -r .AccessKey.AccessKeyId <${OUTPUT_DIR}/${S3_BUCKET_PREFIX}-access-key.json)
 else
     EXISTING_ACCESS_KEY=""
 fi
@@ -39,7 +39,7 @@ function showVersion() {
     echo "Script Version: $SCRIPT_VERSION"
 }
 
-promptyn() {
+function promptyn() {
     while true; do
         read -r -p "$1 " yn
         case $yn in
@@ -55,7 +55,7 @@ function create-group() {
         echo ">>> group ${KOPS_GROUP} already exists"
     else
         echo ">>> creating group ${KOPS_GROUP}"
-        aws --profile ${AWS_PROFILE} iam create-group --group-name ${KOPS_GROUP} >${OUTPUT_DIR}/.group
+        aws --profile ${AWS_PROFILE} iam create-group --group-name ${KOPS_GROUP} >${OUTPUT_DIR}/${S3_BUCKET_PREFIX}-group.json
         attach-group-policy
     fi
 }
@@ -75,9 +75,9 @@ function create-user() {
         echo ">>> user ${KOPS_USER} already exists"
     else
         echo ">>> creating user ${KOPS_USER}"
-        aws --profile ${AWS_PROFILE} iam create-user --user-name ${KOPS_USER} >${OUTPUT_DIR}/user.json
+        aws --profile ${AWS_PROFILE} iam create-user --user-name ${KOPS_USER} >${OUTPUT_DIR}/${S3_BUCKET_PREFIX}-user.json
         aws --profile ${AWS_PROFILE} iam add-user-to-group --user-name ${KOPS_USER} --group-name ${KOPS_GROUP}
-        aws --profile ${AWS_PROFILE} iam create-access-key --user-name ${KOPS_USER} >${OUTPUT_DIR}/access-key.json
+        aws --profile ${AWS_PROFILE} iam create-access-key --user-name ${KOPS_USER} >${OUTPUT_DIR}/${S3_BUCKET_PREFIX}-access-key.json
     fi
 }
 
@@ -88,7 +88,7 @@ function create-bucket() {
         echo ">>> creating bucket ${S3_BUCKET}"
         aws --profile ${AWS_PROFILE} s3api create-bucket \
             --bucket ${S3_BUCKET} \
-            --region us-east-1 >${OUTPUT_DIR}/bucket.json
+            --region us-east-1 >${OUTPUT_DIR}/${S3_BUCKET_PREFIX}-bucket.json
         aws --profile ${AWS_PROFILE} s3api put-bucket-versioning \
             --bucket ${S3_BUCKET} \
             --versioning-configuration Status=Enabled
@@ -105,7 +105,7 @@ function create-key-pair() {
     else
         echo ">>> creating key-pair ${KEY_NAME}"
         aws --profile ${AWS_PROFILE} ec2 create-key-pair \
-            --key-name ${KEY_NAME} >${OUTPUT_DIR}/${KEY_NAME}.pem
+            --key-name ${KEY_NAME} >${OUTPUT_DIR}/${S3_BUCKET_PREFIX}-${KEY_NAME}.pem
     fi
 }
 
@@ -148,7 +148,7 @@ function create-cluster() {
         --cloud-labels=${CLOUD_LABELS} \
         --admin-access=${RESTRICTED_CIDR}
     # --dry-run \
-    # -oyaml >${OUTPUT_DIR}/kops-create-cluster-config.yaml
+    # -oyaml >${OUTPUT_DIR}/${S3_BUCKET_PREFIX}-kops-create-cluster-config.yaml
 
     if promptyn ">>> do you want to create cluster ${CLUSTER_NAME} in zones ${CLUSTER_ZONES} with ${NODE_COUNT} nodes, with bucket ${S3_BUCKET}?"; then
         kops update cluster ${CLUSTER_NAME} \
@@ -226,28 +226,6 @@ function remove-resources() {
     fi
 }
 
-function create-repository() {
-    if promptyn ">>> do you want to create repository $1?"; then
-        REPOSITORY_URI="$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$1"
-        aws ecr describe-repositories --repository-names "$1" >/dev/null 2>&1
-        status=$?
-        if [[ ! "${status}" -eq 0 ]]; then
-            aws ecr create-repository --repository-name "$1" >/dev/null 2>&1
-            status=$?
-            if [[ "${status}" -eq 0 ]]; then
-                echo ">>> repository $REPOSITORY_URI was created"
-            else
-                echo ">>> problem creating repository $REPOSITORY_URI"
-            fi
-        else
-            echo ">>> repository $REPOSITORY_URI already exists"
-        fi
-        docker login -u AWS -p "$(aws ecr get-login-password --region "$REGION")" "$AWS_ACCOUNT_ID".dkr.ecr."$REGION".amazonaws.com
-    else
-        exit
-    fi
-}
-
 function helpfunction() {
     echo "kops-aws.sh - kOpS AWS Setup
 
@@ -258,7 +236,6 @@ function helpfunction() {
     echo "      -v    Show Version"
     echo "      -a    Add the kOps user, group and bucket"
     echo "      -c    Create the cluster"
-    echo "      -e    Create an ECR repository"
     echo "      -t    Create the terraform configuration"
     echo "      -d    Delete the cluster"
     echo "      -r    Remove the kOps user, group and bucket"
@@ -270,7 +247,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-while getopts "hvace:drt-:" OPT; do
+while getopts "hvacdrt-:" OPT; do
     if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
         OPT="${OPTARG%%=*}"     # extract long option name
         OPTARG="${OPTARG#$OPT}" # extract long option argument (may be empty)
@@ -289,9 +266,6 @@ while getopts "hvace:drt-:" OPT; do
     c)
         create-cluster
         ;;
-    e)
-        create-repository "$OPTARG"
-        ;;
     t)
         create-terraform
         ;;
@@ -302,7 +276,7 @@ while getopts "hvace:drt-:" OPT; do
         remove-resources
         ;;
     *)
-        echo "$(basename "${0}"):usage: [-a] | [-c] | [-e] <repository name> | [-t] | [-d] | [-r]"
+        echo "$(basename "${0}"):usage: [-a] | [-c] | [-t] | [-d] | [-r]"
         exit 1 # Command to come out of the program with status 1
         ;;
     esac

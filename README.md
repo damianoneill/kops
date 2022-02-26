@@ -92,7 +92,6 @@ kops-aws.sh - kOpS AWS Setup
       -v    Show Version
       -a    Add the kOps user, group and bucket
       -c    Create the cluster
-      -e    Create an ECR repository
       -t    Create the terraform configuration
       -d    Delete the cluster
       -r    Remove the kOps user, group and bucket
