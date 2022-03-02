@@ -28,30 +28,7 @@ The script includes a set of variables that can be overriden on the command line
 ```shell
 : "${AWS_PROFILE:=default}"
 : "${KOPS_USER:=kops}"
-: "${KOPS_GROUP:=kops}"
-: "${S3_BUCKET_PREFIX:=prefix-example}"
-: "${S3_BUCKET:=${S3_BUCKET_PREFIX}-com-state-store}"
-: "${KOPS_STATE_STORE:=s3://${S3_BUCKET_PREFIX}-com-state-store}"
-: "${OUTPUT_DIR:=output}"
-if [ -f "${OUTPUT_DIR}/access-key.json" ]; then
-    EXISTING_ACCESS_KEY=$(jq -r .AccessKey.AccessKeyId <${OUTPUT_DIR}/access-key.json)
-else
-    EXISTING_ACCESS_KEY=""
-fi
-: "${ACCESS_KEY:=${EXISTING_ACCESS_KEY}}"
-
-# cluster config
-: "${CLUSTER_ID:=myfirstcluster}"
-: "${CLUSTER_NAME:=${CLUSTER_ID}.k8s.local}" # .k8s.local == https://kops.sigs.k8s.io/gossip/
-: "${CLUSTER_ZONES:=us-west-2a}"
-: "${NODE_COUNT:=2}"
-: "${MASTER_SIZE:=c5.large}"
-: "${NODE_SIZE:=m5.large}"
-: "${SSH_PUBLIC_KEY:=~/.ssh/id_rsa.pub}"
-: "${CLOUD_LABELS:=Stack=Test}"
-: "${RESTRICTED_CIDR:=0.0.0.0/0}"
-: "${KOPS_STATE_STORE:=s3\:\/\/${S3_BUCKET}}"
-: "${KEY_NAME:=${CLUSTER_ID}}"
+...
 ```
 
 And an example of overriding some variables.
@@ -88,13 +65,14 @@ kops-aws.sh - kOpS AWS Setup
     Usage: kops-aws.sh -h
            kops-aws.sh -a -c
 
-      -h    Show this help message
-      -v    Show Version
-      -a    Add the kOps user, group and bucket
-      -c    Create the cluster
-      -t    Create the terraform configuration
-      -d    Delete the cluster
-      -r    Remove the kOps user, group and bucket
+      -h    show this help message
+      -v    show Version
+      -a    add the kOps user, group and bucket
+      -c    create the cluster
+      -t    create the terraform configuration
+      -k    export kubecfg
+      -d    delete the cluster
+      -r    remove the kOps user, group and bucket
 
 ```
 

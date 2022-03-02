@@ -226,19 +226,24 @@ function remove-resources() {
     fi
 }
 
+function export-kube-config() {
+    kops export kubecfg --admin --state "${KOPS_STATE_STORE}"
+}
+
 function helpfunction() {
     echo "kops-aws.sh - kOpS AWS Setup
 
     Usage: kops-aws.sh -h
            kops-aws.sh -a -c"
     echo ""
-    echo "      -h    Show this help message"
-    echo "      -v    Show Version"
-    echo "      -a    Add the kOps user, group and bucket"
-    echo "      -c    Create the cluster"
-    echo "      -t    Create the terraform configuration"
-    echo "      -d    Delete the cluster"
-    echo "      -r    Remove the kOps user, group and bucket"
+    echo "      -h    show this help message"
+    echo "      -v    show Version"
+    echo "      -a    add the kOps user, group and bucket"
+    echo "      -c    create the cluster"
+    echo "      -t    create the terraform configuration"
+    echo "      -k    export kubecfg"
+    echo "      -d    delete the cluster"
+    echo "      -r    remove the kOps user, group and bucket"
     echo ""
 }
 
@@ -247,7 +252,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-while getopts "hvacdrt-:" OPT; do
+while getopts "hvackdrt-:" OPT; do
     if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
         OPT="${OPTARG%%=*}"     # extract long option name
         OPTARG="${OPTARG#$OPT}" # extract long option argument (may be empty)
@@ -269,6 +274,9 @@ while getopts "hvacdrt-:" OPT; do
     t)
         create-terraform
         ;;
+    k)
+        export-kube-config
+        ;;
     d)
         delete-cluster
         ;;
@@ -276,7 +284,7 @@ while getopts "hvacdrt-:" OPT; do
         remove-resources
         ;;
     *)
-        echo "$(basename "${0}"):usage: [-a] | [-c] | [-t] | [-d] | [-r]"
+        echo "$(basename "${0}"):usage: [-a] | [-c] | [-t] | [-k] | [-d] | [-r]"
         exit 1 # Command to come out of the program with status 1
         ;;
     esac
