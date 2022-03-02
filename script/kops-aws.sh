@@ -35,6 +35,9 @@ fi
 # use for ssh key-pair
 : "${KEY_NAME:=${CLUSTER_ID}}"
 
+# no of hours that a kube admin credential is valid for, i.e. 10 years
+: "${NO_OF_HOURS:=87600h0m0s}"
+
 function showVersion() {
     echo "Script Version: $SCRIPT_VERSION"
 }
@@ -227,7 +230,7 @@ function remove-resources() {
 }
 
 function export-kube-config() {
-    kops export kubecfg --admin --state "${KOPS_STATE_STORE}"
+    kops export kubecfg --admin=${NO_OF_HOURS} --state "${KOPS_STATE_STORE}"
 }
 
 function helpfunction() {
@@ -241,7 +244,7 @@ function helpfunction() {
     echo "      -a    add the kOps user, group and bucket"
     echo "      -c    create the cluster"
     echo "      -t    create the terraform configuration"
-    echo "      -k    export kubecfg"
+    echo "      -k    export admin kubecfg"
     echo "      -d    delete the cluster"
     echo "      -r    remove the kOps user, group and bucket"
     echo ""
