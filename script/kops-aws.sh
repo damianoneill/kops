@@ -38,6 +38,9 @@ fi
 # no of hours that a kube admin credential is valid for, i.e. 10 years
 : "${NO_OF_HOURS:=87600h0m0s}"
 
+: "${KUBECONFIG:=$HOME/.kube/config}"
+: "${TMP_DIR:=/tmp}"
+
 function showVersion() {
     echo "Script Version: $SCRIPT_VERSION"
 }
@@ -230,7 +233,14 @@ function remove-resources() {
 }
 
 function export-kube-config() {
+    echo ">>> updating current KUBECONFIG with kubecfg admin for cluster $S3_BUCKET_PREFIX.k8s.local"
     kops export kubecfg --admin=${NO_OF_HOURS} --state "${KOPS_STATE_STORE}"
+}
+
+function extract-context() {
+    echo ">>> extracting kube config for context $S3_BUCKET_PREFIX to ${TMP_DIR}/${S3_BUCKET_PREFIX}.txt"
+    KUBECONFIG=${KUBECONFIG} kubectl config view \
+    --minify --flatten --context=${S3_BUCKET_PREFIX}.k8s.local > ${TMP_DIR}/${S3_BUCKET_PREFIX}.txt
 }
 
 function helpfunction() {
@@ -244,7 +254,8 @@ function helpfunction() {
     echo "      -a    add the kOps user, group and bucket"
     echo "      -c    create the cluster"
     echo "      -t    create the terraform configuration"
-    echo "      -k    export admin kubecfg"
+    echo "      -k    export admin kubecfg (from kops cluster to KUBECONFIG)"
+    echo "      -o    extract context from KUBECONFIG, write to file"
     echo "      -d    delete the cluster"
     echo "      -r    remove the kOps user, group and bucket"
     echo ""
@@ -255,7 +266,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-while getopts "hvackdrt-:" OPT; do
+while getopts "hvackodrt-:" OPT; do
     if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
         OPT="${OPTARG%%=*}"     # extract long option name
         OPTARG="${OPTARG#$OPT}" # extract long option argument (may be empty)
@@ -280,6 +291,9 @@ while getopts "hvackdrt-:" OPT; do
     k)
         export-kube-config
         ;;
+    o)
+        extract-context
+        ;;
     d)
         delete-cluster
         ;;
@@ -287,7 +301,7 @@ while getopts "hvackdrt-:" OPT; do
         remove-resources
         ;;
     *)
-        echo "$(basename "${0}"):usage: [-a] | [-c] | [-t] | [-k] | [-d] | [-r]"
+        echo "$(basename "${0}"):usage: [-a] | [-c] | [-t] | [-k] | [-o] | [-d] | [-r]"
         exit 1 # Command to come out of the program with status 1
         ;;
     esac

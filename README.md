@@ -70,7 +70,8 @@ kops-aws.sh - kOpS AWS Setup
       -a    add the kOps user, group and bucket
       -c    create the cluster
       -t    create the terraform configuration
-      -k    export kubecfg
+      -k    export admin kubecfg (from kops cluster to KUBECONFIG)
+      -o    extract context from KUBECONFIG, write to file
       -d    delete the cluster
       -r    remove the kOps user, group and bucket
 
