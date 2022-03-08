@@ -41,6 +41,10 @@ fi
 : "${KUBECONFIG:=$HOME/.kube/config}"
 : "${TMP_DIR:=/tmp}"
 
+SCRIPT_NAME="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+
 function showVersion() {
     echo "Script Version: $SCRIPT_VERSION"
 }
@@ -244,10 +248,11 @@ function extract-context() {
 }
 
 function helpfunction() {
-    echo "kops-aws.sh - kOpS AWS Setup
+    echo "$DIR/$SCRIPT_NAME - kOpS AWS Setup
 
-    Usage: kops-aws.sh -h
-           kops-aws.sh -a -c"
+    Usage: $DIR/$SCRIPT_NAME -h
+           $DIR/$SCRIPT_NAME -a -c
+           $DIR/$SCRIPT_NAME -k -o"
     echo ""
     echo "      -h    show this help message"
     echo "      -v    show Version"
